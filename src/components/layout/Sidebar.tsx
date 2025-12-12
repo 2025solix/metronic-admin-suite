@@ -11,9 +11,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  FolderOpen,
-  ListTodo,
-  PlusCircle,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -45,31 +43,41 @@ const NavItem = ({ to, icon, label, collapsed, children }: NavItemProps) => {
         <button
           onClick={() => setExpanded(!expanded)}
           className={cn(
-            'nav-item w-full justify-between',
+            'nav-item w-full justify-between group',
             isActive ? 'text-primary bg-primary/5' : 'nav-item-inactive'
           )}
         >
           <div className="flex items-center gap-3">
-            {icon}
+            <span className={cn(
+              'transition-colors',
+              isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+            )}>
+              {icon}
+            </span>
             {!collapsed && <span>{label}</span>}
           </div>
-          {!collapsed && (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+          {!collapsed && (
+            <span className="transition-transform duration-200">
+              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </span>
+          )}
         </button>
-        {expanded && !collapsed && (
-          <div className="ml-6 mt-1 space-y-1">
-            {children.map(child => (
-              <NavLink
-                key={child.to}
-                to={child.to}
-                className={({ isActive }) =>
-                  cn('nav-item text-sm', isActive ? 'nav-item-active' : 'nav-item-inactive')
-                }
-              >
-                <span>{child.label}</span>
-              </NavLink>
-            ))}
-          </div>
-        )}
+        <div className={cn(
+          'ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-200',
+          expanded && !collapsed ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        )}>
+          {children.map(child => (
+            <NavLink
+              key={child.to}
+              to={child.to}
+              className={({ isActive }) =>
+                cn('nav-item text-sm', isActive ? 'nav-item-active' : 'nav-item-inactive')
+              }
+            >
+              <span>{child.label}</span>
+            </NavLink>
+          ))}
+        </div>
       </div>
     );
   }
@@ -78,10 +86,12 @@ const NavItem = ({ to, icon, label, collapsed, children }: NavItemProps) => {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        cn('nav-item', isActive ? 'nav-item-active' : 'nav-item-inactive')
+        cn('nav-item group', isActive ? 'nav-item-active' : 'nav-item-inactive')
       }
     >
-      {icon}
+      <span className="transition-colors group-hover:text-primary">
+        {icon}
+      </span>
       {!collapsed && <span>{label}</span>}
     </NavLink>
   );
@@ -96,23 +106,26 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-sidebar-border">
+      <div className="h-16 flex items-center justify-center border-b border-sidebar-border px-3">
         {collapsed ? (
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">JS</span>
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+            <span className="text-primary-foreground font-bold text-lg">JK</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">JS</span>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-primary-foreground font-bold text-lg">JK</span>
             </div>
-            <span className="font-semibold text-foreground">JobService</span>
+            <div>
+              <span className="font-bold text-lg text-foreground">JobKaro</span>
+              <span className="text-xs text-muted-foreground block -mt-1">Admin Portal</span>
+            </div>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         <NavItem to="/dashboard" icon={<LayoutDashboard className="w-5 h-5" />} label="Dashboard" collapsed={collapsed} />
         
         <NavItem
@@ -148,6 +161,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         <NavItem to="/reports" icon={<FileText className="w-5 h-5" />} label="Reports" collapsed={collapsed} />
         <NavItem to="/notifications" icon={<Bell className="w-5 h-5" />} label="Notifications" collapsed={collapsed} />
         <NavItem to="/payments" icon={<CreditCard className="w-5 h-5" />} label="Payments" collapsed={collapsed} />
+        <NavItem to="/audit-logs" icon={<Shield className="w-5 h-5" />} label="Audit Logs" collapsed={collapsed} />
         <NavItem to="/settings" icon={<Settings className="w-5 h-5" />} label="Settings" collapsed={collapsed} />
       </nav>
 
@@ -155,7 +169,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
       <div className="p-3 border-t border-sidebar-border">
         {!collapsed && (
           <div className="text-xs text-muted-foreground text-center">
-            v1.0.0 • Admin Portal
+            <span className="font-medium">v1.0.0</span> • JobKaro Admin
           </div>
         )}
       </div>
