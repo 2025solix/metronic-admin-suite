@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, MoreHorizontal, User, Ban, AlertTriangle } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { profilesData } from '@/data/mockData';
+import { useUsers } from '@/hooks/useUsers';
+import { useWorkers } from '@/hooks/useWorkers';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,15 +20,25 @@ import {
 const ProfilesList = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
+  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: workers = [], isLoading: workersLoading } = useWorkers();
+
+  const isLoading = usersLoading || workersLoading;
+
+  // Combine users and workers into profiles
+  const profiles = [
+    ...users.map(u => ({ ...u, role: 'Employer' as const, profileType: 'user' as const })),
+    ...workers.map(w => ({ ...w, role: 'Worker' as const, profileType: 'worker' as const })),
+  ];
 
   const getFilteredData = () => {
     switch (activeTab) {
       case 'workers':
-        return profilesData.filter(p => p.role === 'Worker');
+        return profiles.filter(p => p.role === 'Worker');
       case 'employers':
-        return profilesData.filter(p => p.role === 'Employer');
+        return profiles.filter(p => p.role === 'Employer');
       default:
-        return profilesData;
+        return profiles;
     }
   };
 
@@ -34,10 +46,10 @@ const ProfilesList = () => {
     {
       key: 'avatar',
       header: '',
-      render: (item: typeof profilesData[0]) => (
+      render: (item: any) => (
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-            {item.name.split(' ').map(n => n[0]).join('')}
+            {item.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
           </AvatarFallback>
         </Avatar>
       ),
@@ -46,7 +58,7 @@ const ProfilesList = () => {
     {
       key: 'role',
       header: 'Role',
-      render: (item: typeof profilesData[0]) => (
+      render: (item: any) => (
         <span className={`text-sm font-medium ${item.role === 'Worker' ? 'text-primary' : 'text-success'}`}>
           {item.role}
         </span>
@@ -54,23 +66,23 @@ const ProfilesList = () => {
     },
     { key: 'phone', header: 'Phone' },
     { key: 'email', header: 'Email' },
-    { key: 'id', header: 'UID', sortable: true },
+    { key: 'id', header: 'UID', sortable: true, render: (item: any) => item.id.slice(0, 8) },
     {
       key: 'status',
       header: 'Status',
-      render: (item: typeof profilesData[0]) => <StatusBadge status={item.status} />,
+      render: (item: any) => <StatusBadge status={item.status} />,
     },
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: typeof profilesData[0]) => (
+      render: (item: any) => (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/profiles/${item.id}`);
+              navigate(`/profiles/${item.profileType}/${item.id}`);
             }}
           >
             <Eye className="w-4 h-4 mr-1" />
@@ -111,12 +123,24 @@ const ProfilesList = () => {
       key: 'status',
       label: 'Status',
       options: [
-        { value: 'Active', label: 'Active' },
-        { value: 'Suspended', label: 'Suspended' },
-        { value: 'Banned', label: 'Banned' },
+        { value: 'active', label: 'Active' },
+        { value: 'suspended', label: 'Suspended' },
+        { value: 'banned', label: 'Banned' },
       ],
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <h1 className="page-title">All Profiles</h1>
+          <p className="page-subtitle">Loading profiles...</p>
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -127,9 +151,9 @@ const ProfilesList = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All ({profilesData.length})</TabsTrigger>
-          <TabsTrigger value="workers">Workers ({profilesData.filter(p => p.role === 'Worker').length})</TabsTrigger>
-          <TabsTrigger value="employers">Employers ({profilesData.filter(p => p.role === 'Employer').length})</TabsTrigger>
+          <TabsTrigger value="all">All ({profiles.length})</TabsTrigger>
+          <TabsTrigger value="workers">Workers ({profiles.filter(p => p.role === 'Worker').length})</TabsTrigger>
+          <TabsTrigger value="employers">Employers ({profiles.filter(p => p.role === 'Employer').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
@@ -138,7 +162,7 @@ const ProfilesList = () => {
             columns={columns}
             searchPlaceholder="Search by name, phone, email or UID..."
             filters={filters}
-            onRowClick={(item) => navigate(`/profiles/${item.id}`)}
+            onRowClick={(item) => navigate(`/profiles/${item.profileType}/${item.id}`)}
           />
         </TabsContent>
       </Tabs>

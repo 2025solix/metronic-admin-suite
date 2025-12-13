@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Users, Shield, Settings as SettingsIcon, Lock, Eye, Plus, Edit, Trash2 } from 'lucide-react';
-import { adminStaff } from '@/data/mockData';
+import { Users, Shield, Settings as SettingsIcon, Lock, Plus, Edit, Trash2 } from 'lucide-react';
+import { useAdmins, useRoles } from '@/hooks/useAdmins';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -20,6 +21,8 @@ import {
 const Settings = () => {
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const { data: admins = [], isLoading: adminsLoading } = useAdmins();
+  const { data: roles = [], isLoading: rolesLoading } = useRoles();
 
   return (
     <div className="space-y-6">
@@ -48,7 +51,6 @@ const Settings = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Admin Team */}
         <TabsContent value="team" className="mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -62,53 +64,60 @@ const Settings = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Admin</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Last Login</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminStaff.map(admin => (
-                    <tr key={admin.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {admin.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{admin.name}</span>
-                        </div>
-                      </td>
-                      <td>{admin.email}</td>
-                      <td>{admin.role}</td>
-                      <td><StatusBadge status={admin.status} /></td>
-                      <td>{admin.lastLogin}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+              {adminsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-16" />
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Admin</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Last Login</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {admins.map(admin => (
+                      <tr key={admin.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                {admin.name.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{admin.name}</span>
+                          </div>
+                        </td>
+                        <td>{admin.email}</td>
+                        <td>{admin.role}</td>
+                        <td><StatusBadge status={admin.status} /></td>
+                        <td>{admin.last_login ? new Date(admin.last_login).toLocaleString() : 'Never'}</td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Roles & Permissions */}
         <TabsContent value="roles" className="mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -122,33 +131,34 @@ const Settings = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: 'Super Admin', description: 'Full access to all features', users: 1 },
-                  { name: 'Operations', description: 'Manage works, workers, and users', users: 2 },
-                  { name: 'Finance', description: 'Manage payments and reports', users: 1 },
-                  { name: 'Support', description: 'Handle reports and notifications', users: 3 },
-                ].map((role, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{role.name}</h3>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
+              {rolesLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-20" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {roles.map((role) => (
+                    <div key={role.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                      <div>
+                        <h3 className="font-medium">{role.display_name}</h3>
+                        <p className="text-sm text-muted-foreground">{role.description || role.role_name}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Button variant="outline" size="sm">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">{role.users} users</span>
-                      <Button variant="outline" size="sm">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* System Settings */}
         <TabsContent value="system" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
@@ -158,11 +168,11 @@ const Settings = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Platform Name</Label>
-                  <Input defaultValue="JobService" />
+                  <Input defaultValue="JobKaro" />
                 </div>
                 <div className="space-y-2">
                   <Label>Support Email</Label>
-                  <Input defaultValue="support@jobservice.com" />
+                  <Input defaultValue="support@jobkaro.com" />
                 </div>
                 <div className="space-y-2">
                   <Label>Default Currency</Label>
@@ -222,7 +232,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        {/* Security */}
         <TabsContent value="security" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
