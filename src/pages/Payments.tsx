@@ -1,52 +1,55 @@
 import { useState } from 'react';
-import { Eye, Download, RefreshCw } from 'lucide-react';
+import { Eye, Download } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { paymentsData } from '@/data/mockData';
+import { usePayments, usePaymentStats } from '@/hooks/usePayments';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Payments = () => {
   const [activeTab, setActiveTab] = useState('all');
+  const { data: payments = [], isLoading } = usePayments();
+  const { data: stats } = usePaymentStats();
 
   const getFilteredData = () => {
     switch (activeTab) {
       case 'completed':
-        return paymentsData.filter(p => p.status === 'Completed');
+        return payments.filter(p => p.status === 'success');
       case 'pending':
-        return paymentsData.filter(p => p.status === 'Pending' || p.status === 'Partial');
+        return payments.filter(p => p.status === 'pending');
       case 'refunds':
-        return paymentsData.filter(p => p.status === 'Refunded');
+        return payments.filter(p => p.status === 'refunded');
       default:
-        return paymentsData;
+        return payments;
     }
   };
 
   const columns = [
-    { key: 'id', header: 'Payment ID', sortable: true },
-    { key: 'workId', header: 'Work ID' },
-    { key: 'user', header: 'User (Payer)', sortable: true },
-    { key: 'worker', header: 'Worker (Recipient)', sortable: true },
+    { key: 'id', header: 'Payment ID', sortable: true, render: (item: any) => item.id.slice(0, 8) },
+    { key: 'booking_id', header: 'Work ID', render: (item: any) => item.bookings?.id?.slice(0, 8) || '-' },
+    { key: 'user', header: 'User (Payer)', render: (item: any) => item.users?.name || '-' },
+    { key: 'worker', header: 'Worker (Recipient)', render: (item: any) => item.workers?.name || '-' },
     {
       key: 'amount',
       header: 'Amount',
-      render: (item: typeof paymentsData[0]) => (
-        <span className="font-medium">₹{item.amount.toLocaleString()}</span>
+      render: (item: any) => (
+        <span className="font-medium">₹{Number(item.amount).toLocaleString()}</span>
       ),
       sortable: true,
     },
-    { key: 'method', header: 'Method' },
+    { key: 'payment_method', header: 'Method' },
     {
       key: 'status',
       header: 'Status',
-      render: (item: typeof paymentsData[0]) => <StatusBadge status={item.status} />,
+      render: (item: any) => <StatusBadge status={item.status} />,
     },
-    { key: 'date', header: 'Date', sortable: true },
+    { key: 'created_at', header: 'Date', sortable: true, render: (item: any) => new Date(item.created_at).toLocaleDateString() },
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: typeof paymentsData[0]) => (
+      render: (item: any) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm">
             <Eye className="w-4 h-4 mr-1" />
@@ -63,19 +66,31 @@ const Payments = () => {
 
   const filters = [
     {
-      key: 'method',
+      key: 'payment_method',
       label: 'Method',
       options: [
-        { value: 'UPI', label: 'UPI' },
-        { value: 'Bank', label: 'Bank Transfer' },
+        { value: 'upi', label: 'UPI' },
+        { value: 'bank_transfer', label: 'Bank Transfer' },
+        { value: 'card', label: 'Card' },
       ],
     },
   ];
 
-  const totalAmount = paymentsData.reduce((sum, p) => sum + p.amount, 0);
-  const completedAmount = paymentsData.filter(p => p.status === 'Completed').reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = paymentsData.filter(p => p.status === 'Pending' || p.status === 'Partial').reduce((sum, p) => sum + p.amount, 0);
-  const refundedAmount = paymentsData.filter(p => p.status === 'Refunded').reduce((sum, p) => sum + p.amount, 0);
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <h1 className="page-title">Payments</h1>
+          <p className="page-subtitle">Loading payment data...</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -90,29 +105,28 @@ const Payments = () => {
         </Button>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-foreground">₹{totalAmount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">₹{(stats?.totalAmount || 0).toLocaleString()}</div>
             <p className="text-sm text-muted-foreground">Total Volume</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-success">₹{completedAmount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-success">₹{(stats?.completedAmount || 0).toLocaleString()}</div>
             <p className="text-sm text-muted-foreground">Completed</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-warning">₹{pendingAmount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-warning">₹{(stats?.pendingAmount || 0).toLocaleString()}</div>
             <p className="text-sm text-muted-foreground">Pending</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-info">₹{refundedAmount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-info">₹{(stats?.refundedAmount || 0).toLocaleString()}</div>
             <p className="text-sm text-muted-foreground">Refunded</p>
           </CardContent>
         </Card>
@@ -120,10 +134,10 @@ const Payments = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All Payments ({paymentsData.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed ({paymentsData.filter(p => p.status === 'Completed').length})</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({paymentsData.filter(p => p.status === 'Pending' || p.status === 'Partial').length})</TabsTrigger>
-          <TabsTrigger value="refunds">Refunds ({paymentsData.filter(p => p.status === 'Refunded').length})</TabsTrigger>
+          <TabsTrigger value="all">All Payments ({payments.length})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({payments.filter(p => p.status === 'success').length})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({payments.filter(p => p.status === 'pending').length})</TabsTrigger>
+          <TabsTrigger value="refunds">Refunds ({payments.filter(p => p.status === 'refunded').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">

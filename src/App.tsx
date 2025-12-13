@@ -39,7 +39,7 @@ const App = () => (
             <Route path="worker-approval" element={<WorkerApproval />} />
             <Route path="profiles" element={<Navigate to="/profiles/all" replace />} />
             <Route path="profiles/all" element={<ProfilesList />} />
-            <Route path="profiles/:id" element={<ProfileDetail />} />
+            <Route path="profiles/:type/:id" element={<ProfileDetail />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notifications" element={<Notifications />} />

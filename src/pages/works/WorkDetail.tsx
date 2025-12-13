@@ -1,15 +1,55 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Briefcase, MapPin, Calendar, CreditCard, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { worksData } from '@/data/mockData';
+import { useBooking, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 const WorkDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const work = worksData.find(w => w.id === id);
+  const { data: work, isLoading } = useBooking(id || '');
+  const updateStatus = useUpdateBookingStatus();
+
+  const handleComplete = async () => {
+    if (!id) return;
+    try {
+      await updateStatus.mutateAsync({ id, status: 'completed' });
+      toast.success('Work marked as completed');
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!id) return;
+    try {
+      await updateStatus.mutateAsync({ id, status: 'cancelled' });
+      toast.success('Work cancelled');
+    } catch (error) {
+      toast.error('Failed to cancel work');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <Skeleton className="h-10 w-48" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-96 lg:col-span-2" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    );
+  }
 
   if (!work) {
     return (
@@ -19,37 +59,39 @@ const WorkDetail = () => {
     );
   }
 
-  const timeline = [
-    { date: work.dateRequested, event: 'Work Requested', status: 'completed' },
-    { date: work.dateRequested, event: 'Worker Assigned', status: work.workerName !== 'Unassigned' ? 'completed' : 'pending' },
-    { date: work.dueDate, event: 'Work Started', status: work.status === 'Active' || work.status === 'Completed' ? 'completed' : 'pending' },
-    { date: work.dueDate, event: 'Work Completed', status: work.status === 'Completed' ? 'completed' : 'pending' },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="page-title">{work.id}</h1>
-            <StatusBadge status={work.status} />
+            <h1 className="page-title">{work.id.slice(0, 8)}</h1>
+            <StatusBadge status={work.booking_status} />
           </div>
-          <p className="page-subtitle">{work.category} Service</p>
+          <p className="page-subtitle">{work.category_name} Service</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Reassign
           </Button>
-          <Button variant="outline" className="text-success border-success hover:bg-success/10">
+          <Button 
+            variant="outline" 
+            className="text-success border-success hover:bg-success/10"
+            onClick={handleComplete}
+            disabled={updateStatus.isPending}
+          >
             <CheckCircle className="w-4 h-4 mr-2" />
             Complete
           </Button>
-          <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
+          <Button 
+            variant="outline" 
+            className="text-destructive border-destructive hover:bg-destructive/10"
+            onClick={handleCancel}
+            disabled={updateStatus.isPending}
+          >
             <XCircle className="w-4 h-4 mr-2" />
             Cancel
           </Button>
@@ -57,9 +99,7 @@ const WorkDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Work Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -71,34 +111,29 @@ const WorkDetail = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Work ID</p>
-                  <p className="font-medium">{work.id}</p>
+                  <p className="font-medium">{work.id.slice(0, 8)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Category</p>
-                  <p className="font-medium">{work.category}</p>
+                  <p className="font-medium">{work.category_name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Mode</p>
-                  <p className="font-medium">{work.mode}</p>
+                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="font-medium">{work.duration_hours} hours</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <StatusBadge status={work.status} />
+                  <StatusBadge status={work.booking_status} />
                 </div>
               </div>
               <Separator />
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Description</p>
-                <p className="text-sm">This is a sample work description. The user has requested {work.category.toLowerCase()} services at their location. Please ensure quality service delivery.</p>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>123 Main Street, Kochi, Kerala 682001</span>
+                <p className="text-sm text-muted-foreground mb-2">Notes</p>
+                <p className="text-sm">{work.notes || 'No additional notes'}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* User & Worker Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -110,19 +145,15 @@ const WorkDetail = () => {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{work.userName}</p>
+                  <p className="font-medium">{(work as any).users?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">+91 9876543210</p>
+                  <p className="font-medium">{(work as any).users?.phone || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{work.userName.toLowerCase().replace(' ', '.')}@email.com</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Past Works</p>
-                  <p className="font-medium">12 completed</p>
+                  <p className="font-medium">{(work as any).users?.email || 'N/A'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -137,21 +168,17 @@ const WorkDetail = () => {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{work.workerName}</p>
+                  <p className="font-medium">{(work as any).workers?.name || 'Unassigned'}</p>
                 </div>
-                {work.workerName !== 'Unassigned' && (
+                {(work as any).workers && (
                   <>
                     <div>
                       <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium">+91 9876543211</p>
+                      <p className="font-medium">{(work as any).workers?.phone}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Skills</p>
-                      <p className="font-medium">{work.category}, General Maintenance</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Verification</p>
-                      <StatusBadge status="Active" />
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-medium">{(work as any).workers?.email}</p>
                     </div>
                   </>
                 )}
@@ -160,9 +187,7 @@ const WorkDetail = () => {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Timeline */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -172,24 +197,44 @@ const WorkDetail = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {timeline.map((item, index) => (
-                  <div key={index} className="flex gap-3">
-                    <div className={`w-3 h-3 rounded-full mt-1.5 ${
-                      item.status === 'completed' ? 'bg-success' : 'bg-muted'
-                    }`} />
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${
-                        item.status === 'completed' ? 'text-foreground' : 'text-muted-foreground'
-                      }`}>{item.event}</p>
-                      <p className="text-xs text-muted-foreground">{item.date}</p>
+                <div className="flex gap-3">
+                  <div className="w-3 h-3 rounded-full mt-1.5 bg-success" />
+                  <div>
+                    <p className="text-sm font-medium">Work Created</p>
+                    <p className="text-xs text-muted-foreground">{new Date(work.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+                {work.accepted_at && (
+                  <div className="flex gap-3">
+                    <div className="w-3 h-3 rounded-full mt-1.5 bg-success" />
+                    <div>
+                      <p className="text-sm font-medium">Accepted</p>
+                      <p className="text-xs text-muted-foreground">{new Date(work.accepted_at).toLocaleString()}</p>
                     </div>
                   </div>
-                ))}
+                )}
+                {work.started_at && (
+                  <div className="flex gap-3">
+                    <div className="w-3 h-3 rounded-full mt-1.5 bg-success" />
+                    <div>
+                      <p className="text-sm font-medium">Started</p>
+                      <p className="text-xs text-muted-foreground">{new Date(work.started_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+                {work.completed_at && (
+                  <div className="flex gap-3">
+                    <div className="w-3 h-3 rounded-full mt-1.5 bg-success" />
+                    <div>
+                      <p className="text-sm font-medium">Completed</p>
+                      <p className="text-xs text-muted-foreground">{new Date(work.completed_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Payment Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -199,26 +244,27 @@ const WorkDetail = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Service Charge</span>
-                <span className="font-medium">₹1,500</span>
+                <span className="text-sm text-muted-foreground">Price</span>
+                <span className="font-medium">₹{Number(work.price).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Platform Fee</span>
-                <span className="font-medium">₹150</span>
-              </div>
+              {work.tip && Number(work.tip) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Tip</span>
+                  <span className="font-medium">₹{Number(work.tip).toLocaleString()}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between">
                 <span className="font-medium">Total</span>
-                <span className="font-bold">₹1,650</span>
+                <span className="font-bold">₹{(Number(work.price) + Number(work.tip || 0)).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pt-2">
                 <span className="text-sm text-muted-foreground">Payment Status</span>
-                <StatusBadge status={work.paymentStatus} />
+                <StatusBadge status={work.payment_status} />
               </div>
             </CardContent>
           </Card>
 
-          {/* Dates */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -228,16 +274,16 @@ const WorkDetail = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm text-muted-foreground">Requested Date</p>
-                <p className="font-medium">{work.dateRequested}</p>
+                <p className="text-sm text-muted-foreground">Service Date</p>
+                <p className="font-medium">{work.service_date}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Due Date</p>
-                <p className="font-medium">{work.dueDate}</p>
+                <p className="text-sm text-muted-foreground">Start Time</p>
+                <p className="font-medium">{work.start_time}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Preferred Time</p>
-                <p className="font-medium">10:00 AM - 12:00 PM</p>
+                <p className="text-sm text-muted-foreground">Duration</p>
+                <p className="font-medium">{work.duration_hours} hours</p>
               </div>
             </CardContent>
           </Card>

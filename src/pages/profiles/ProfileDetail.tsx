@@ -1,17 +1,55 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Phone, Mail, MapPin, Calendar, Briefcase, CreditCard, Star, AlertTriangle, Ban, FileText } from 'lucide-react';
-import { profilesData, worksData, paymentsData } from '@/data/mockData';
+import { useUser, useSuspendUser, useBanUser, useActivateUser } from '@/hooks/useUsers';
+import { useWorker } from '@/hooks/useWorkers';
+import { useBookings } from '@/hooks/useBookings';
+import { usePayments } from '@/hooks/usePayments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 const ProfileDetail = () => {
-  const { id } = useParams();
+  const { type, id } = useParams();
   const navigate = useNavigate();
-  const profile = profilesData.find(p => p.id === id);
+  
+  const isWorker = type === 'worker';
+  const { data: user, isLoading: userLoading } = useUser(isWorker ? '' : id || '');
+  const { data: worker, isLoading: workerLoading } = useWorker(isWorker ? id || '' : '');
+  const { data: bookings = [] } = useBookings();
+  const { data: payments = [] } = usePayments();
+
+  const suspendUser = useSuspendUser();
+  const banUser = useBanUser();
+  const activateUser = useActivateUser();
+
+  const isLoading = isWorker ? workerLoading : userLoading;
+  const profile = isWorker ? worker : user;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96 lg:col-span-2" />
+        </div>
+      </div>
+    );
+  }
 
   if (!profile) {
     return (
@@ -21,17 +59,36 @@ const ProfileDetail = () => {
     );
   }
 
-  const userWorks = worksData.filter(w => 
-    profile.role === 'Employer' ? w.userName === profile.name : w.workerName === profile.name
+  const userBookings = bookings.filter((b: any) => 
+    isWorker ? b.worker_id === id : b.user_id === id
   );
 
-  const userPayments = paymentsData.filter(p =>
-    profile.role === 'Employer' ? p.user === profile.name : p.worker === profile.name
+  const userPayments = payments.filter((p: any) =>
+    isWorker ? p.worker_id === id : p.user_id === id
   );
+
+  const handleSuspend = async () => {
+    if (!id) return;
+    try {
+      await suspendUser.mutateAsync(id);
+      toast.success('User suspended');
+    } catch (error) {
+      toast.error('Failed to suspend user');
+    }
+  };
+
+  const handleBan = async () => {
+    if (!id) return;
+    try {
+      await banUser.mutateAsync(id);
+      toast.success('User banned');
+    } catch (error) {
+      toast.error('Failed to ban user');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-5 h-5" />
@@ -39,7 +96,7 @@ const ProfileDetail = () => {
         <div className="flex-1 flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarFallback className="bg-primary/10 text-primary text-xl">
-              {profile.name.split(' ').map(n => n[0]).join('')}
+              {profile.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
             </AvatarFallback>
           </Avatar>
           <div>
@@ -47,7 +104,7 @@ const ProfileDetail = () => {
               <h1 className="page-title">{profile.name}</h1>
               <StatusBadge status={profile.status} />
             </div>
-            <p className="page-subtitle">{profile.role} • {profile.id}</p>
+            <p className="page-subtitle">{isWorker ? 'Worker' : 'Employer'} • {profile.id.slice(0, 8)}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -55,10 +112,20 @@ const ProfileDetail = () => {
             <AlertTriangle className="w-4 h-4 mr-2" />
             Warn
           </Button>
-          <Button variant="outline" className="text-warning border-warning hover:bg-warning/10">
+          <Button 
+            variant="outline" 
+            className="text-warning border-warning hover:bg-warning/10"
+            onClick={handleSuspend}
+            disabled={suspendUser.isPending}
+          >
             Suspend
           </Button>
-          <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
+          <Button 
+            variant="outline" 
+            className="text-destructive border-destructive hover:bg-destructive/10"
+            onClick={handleBan}
+            disabled={banUser.isPending}
+          >
             <Ban className="w-4 h-4 mr-2" />
             Ban
           </Button>
@@ -66,7 +133,6 @@ const ProfileDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Info */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -82,60 +148,65 @@ const ProfileDetail = () => {
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{profile.email}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Kochi, Kerala</span>
+                <span className="text-sm">{profile.email || 'No email'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Joined January 2024</span>
+                <span className="text-sm">Joined {new Date(profile.created_at).toLocaleDateString()}</span>
               </div>
             </CardContent>
           </Card>
 
-          {profile.role === 'Worker' && (
+          {isWorker && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="w-5 h-5" />
-                  Documents
+                  Verification
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {['Aadhaar Card', 'PAN Card', 'Skill Certificate'].map((doc, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 border border-border rounded">
-                    <span className="text-sm">{doc}</span>
-                    <Badge variant="outline" className="text-success border-success">Verified</Badge>
-                  </div>
-                ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Status</span>
+                  <StatusBadge status={(worker as any)?.verification_status || 'pending'} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Verified</span>
+                  <Badge variant={(worker as any)?.is_verified ? 'default' : 'secondary'}>
+                    {(worker as any)?.is_verified ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Star className="w-5 h-5" />
-                Ratings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold text-foreground">4.8</span>
-                <div className="flex text-warning">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <Star key={i} className={`w-4 h-4 ${i <= 4 ? 'fill-current' : ''}`} />
-                  ))}
+          {isWorker && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Star className="w-5 h-5" />
+                  Ratings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl font-bold text-foreground">
+                    {(worker as any)?.average_rating?.toFixed(1) || '0.0'}
+                  </span>
+                  <div className="flex text-warning">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <Star key={i} className={`w-4 h-4 ${i <= Math.round((worker as any)?.average_rating || 0) ? 'fill-current' : ''}`} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Based on 24 reviews</p>
-            </CardContent>
-          </Card>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Based on {(worker as any)?.rating_count || 0} reviews
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Main Content */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="works">
             <TabsList>
@@ -166,12 +237,12 @@ const ProfileDetail = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {userWorks.length > 0 ? userWorks.map(work => (
-                        <tr key={work.id} className="cursor-pointer" onClick={() => navigate(`/works/detail/${work.id}`)}>
-                          <td>{work.id}</td>
-                          <td>{work.category}</td>
-                          <td>{work.dateRequested}</td>
-                          <td><StatusBadge status={work.status} /></td>
+                      {userBookings.length > 0 ? userBookings.map((booking: any) => (
+                        <tr key={booking.id} className="cursor-pointer" onClick={() => navigate(`/works/detail/${booking.id}`)}>
+                          <td>{booking.id.slice(0, 8)}</td>
+                          <td>{booking.category_name}</td>
+                          <td>{new Date(booking.created_at).toLocaleDateString()}</td>
+                          <td><StatusBadge status={booking.booking_status} /></td>
                         </tr>
                       )) : (
                         <tr>
@@ -200,12 +271,12 @@ const ProfileDetail = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {userPayments.length > 0 ? userPayments.map(payment => (
+                      {userPayments.length > 0 ? userPayments.map((payment: any) => (
                         <tr key={payment.id}>
-                          <td>{payment.id}</td>
-                          <td>₹{payment.amount.toLocaleString()}</td>
-                          <td>{payment.method}</td>
-                          <td>{payment.date}</td>
+                          <td>{payment.id.slice(0, 8)}</td>
+                          <td>₹{Number(payment.amount).toLocaleString()}</td>
+                          <td>{payment.payment_method}</td>
+                          <td>{new Date(payment.created_at).toLocaleDateString()}</td>
                           <td><StatusBadge status={payment.status} /></td>
                         </tr>
                       )) : (
