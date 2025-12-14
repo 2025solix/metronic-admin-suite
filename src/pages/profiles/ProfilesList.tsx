@@ -27,7 +27,7 @@ const ProfilesList = () => {
 
   // Combine users and workers into profiles
   const profiles = [
-    ...users.map(u => ({ ...u, role: 'Employer' as const, profileType: 'user' as const })),
+    ...users.map(u => ({ ...u, role: 'User' as const, profileType: 'user' as const })),
     ...workers.map(w => ({ ...w, role: 'Worker' as const, profileType: 'worker' as const })),
   ];
 
@@ -35,8 +35,8 @@ const ProfilesList = () => {
     switch (activeTab) {
       case 'workers':
         return profiles.filter(p => p.role === 'Worker');
-      case 'employers':
-        return profiles.filter(p => p.role === 'Employer');
+      case 'users':
+        return profiles.filter(p => p.role === 'User');
       default:
         return profiles;
     }
@@ -153,7 +153,7 @@ const ProfilesList = () => {
         <TabsList>
           <TabsTrigger value="all">All ({profiles.length})</TabsTrigger>
           <TabsTrigger value="workers">Workers ({profiles.filter(p => p.role === 'Worker').length})</TabsTrigger>
-          <TabsTrigger value="employers">Employers ({profiles.filter(p => p.role === 'Employer').length})</TabsTrigger>
+          <TabsTrigger value="users">Users ({profiles.filter(p => p.role === 'User').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
