@@ -2,7 +2,6 @@ import {
   Users,
   Briefcase,
   UserCheck,
-  Clock,
   XCircle,
   TrendingUp,
   CreditCard,
@@ -72,15 +71,6 @@ const Dashboard = () => {
           icon={Briefcase}
           iconColor="text-info"
           iconBg="bg-info/10"
-        />
-        <StatCard
-          title="Pending Requests"
-          value={stats?.pendingRequests || 0}
-          change="Awaiting acceptance"
-          changeType="neutral"
-          icon={Clock}
-          iconColor="text-warning"
-          iconBg="bg-warning/10"
         />
         <StatCard
           title="Worker Approvals"

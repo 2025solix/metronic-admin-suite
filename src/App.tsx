@@ -17,6 +17,7 @@ import Reports from "@/pages/Reports";
 import Notifications from "@/pages/Notifications";
 import Payments from "@/pages/Payments";
 import Settings from "@/pages/Settings";
+import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="works/categories" element={<WorkCategories />} />
             <Route path="works/create" element={<CreateCategory />} />
             <Route path="works/detail/:id" element={<WorkDetail />} />
+            <Route path="works/categories/:id/edit" element={<CreateCategory />} />
             <Route path="worker-approval" element={<WorkerApproval />} />
             <Route path="profiles" element={<Navigate to="/profiles/all" replace />} />
             <Route path="profiles/all" element={<ProfilesList />} />
@@ -45,6 +47,7 @@ const App = () => (
             <Route path="notifications" element={<Notifications />} />
             <Route path="payments" element={<Payments />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
